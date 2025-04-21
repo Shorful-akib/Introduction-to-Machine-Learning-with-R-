@@ -1,0 +1,1082 @@
+---
+title: "Rana Bhai"
+author: "Akib"
+date: "2025-03-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+setwd('C:/Users/hp/Desktop/Lazy!/R')
+df <- read.csv('melb_data.csv')
+class(df[,c('Price')])
+head(df)
+colnames(df)
+colSums(is.na(df))
+```
+###Missing value 
+```{r}
+
+library(Amelia)
+missmap(df)
+##drop missing value 
+df <- df[complete.cases(df),]
+```
+##Selecting variable
+```{r}
+y <- df$Price
+x <- df[,c('Rooms','Bathroom','Landsize','Lattitude','Longtitude')]
+head(x)
+class(x)
+class(y)
+df_sub <- df[,c('Rooms','Bathroom','Landsize','Lattitude','Longtitude','Price','Car')]
+```
+
+##Model
+
+```{r}
+library(rpart)
+model <- rpart(Price~. , data = df_sub)
+par(xpd = NA)
+plot(model)
+text(model, digits=3)
+```
+##test_train
+```{r}
+library(caret)
+set.seed(20)
+no_of_r <- nrow(df_sub)
+samp_size <- floor(0.75*nrow(df_sub))
+
+
+index <- sample(1:nrow(df_sub), size = samp_size)
+head(index)
+length(index)
+```
+
+
+```{r}
+```
+
+
+```{r}
+trainSet <- df_sub[index,]
+testSet <- df_sub[-index,]
+dim(trainSet)
+dim(testSet)
+```
+```{r}
+library(rpart.plot)
+m1 <- rpart(
+  formula = Price ~.,
+  data = trainSet,
+  method = 'anova'
+)
+rpart.plot(m1)
+
+predi <- predict(m1,testSet)
+head(predi)
+head(testSet$Price)
+testSet$predi <- predict(m1, testSet)
+head(testSet)
+RMSE(pred = predi, obs = testSet$Price)
+plot(testSet$Price, testSet$predi)
+MAE(predi,testSet$Price)
+```
+```{r}
+getmae <- function(maxD, trainSet,testSet){
+  m <- rpart(
+    formula = Price~.,
+    data = trainSet,
+    method = 'anova',
+    control = list(maxD=maxD)
+  ) 
+  P_train <- predict(m, trainSet)
+  me_train <- MAE(P_train,trainSet$Price)
+  
+  P_test <- predict(m, testSet)
+  me_test <- MAE(P_test, testSet$Price)
+  return(c(me_test,me_train))
+}
+```
+```{r}
+GetM <- function(mxdp, trainSet,testSet){
+  mm <- rpart(Price~.,
+              data = trainSet,
+              method = "anova",
+              control = list(maxdepth=mxdp))
+  p_tr <- predict(mm, trainSet)
+  metr <- MAE(p_tr, trainSet$Price)
+  p_ts <- predict(mm, testSet)
+  mets <- MAE(p_ts, testSet$Price)
+  return(c(metr,mets))
+}
+```
+```{r}
+tr <- c()
+ts <- c()
+for(mxdp in c(1,3,5,7,9,11)){
+me <- GetM(mxdp,trainSet,testSet)
+tr_m <- me[1]
+ts_m <- me[2]
+tr <- c(tr,tr_m)
+ts <- c(ts,ts_m)
+print(
+  paste(
+ "Max depth: ",
+ mxdp,
+ "Train Mean Absolute Error: ",
+ tr_m,
+ "Test Mean Absolute Error: ", 
+ ts_m
+)
+)
+}
+```
+
+```{r}
+noofrow <- nrow(df_sub)
+samp_size <- floor(.75*noofrow)
+index <- sample(1:noofrow, size = samp_size)
+trainset <- df_sub[index,]
+testset <- df_sub[-index,]
+dim(trainset)
+dim(testset)
+
+getmae <- function(maxdepth,trainset,testset){
+  model <- rpart(Price~.,
+                 data = trainset,
+                 method = "anova",
+                 control = list(maxdepth = maxdepth))
+  ptrain <- predict(model, trainset)
+  maetrain <- MAE(ptrain,trainset$Price)
+  ptest<- predict(model,testset)
+  maetest <- MAE(ptest, testset$Price)
+  return(c(maetrain,maetest))
+}
+train <- c()
+test <- c()
+for(maxdepth in c(1,3,5,7,9,11)){
+  mae <- getmae(maxdepth,trainset,testset)
+  trainmae <- mae[1]
+  testmae <- mae[2]
+  train <- c(train,trainmae)
+  test <- c(test, testmae)
+  print(
+    paste("Maxdepth: ", maxdepth,
+    "Train Mean AE: ", trainmae,
+    "Test Mean AE: ", testmae
+)
+  )
+}
+``` 
+
+```{r}
+maedf <- data.frame(depth = c(1,3,5,7,9,11),train,test)
+
+ggplot(maedf)+
+  geom_line(aes(depth,train,colour = "Trainmae"))+
+  geom_line(aes(depth,test,colour = "Test MAE"))+theme_classic()
+
+bestmodel <- model <- rpart(
+  formula <- Price~.,
+  data = trainset,
+  method = "anova",
+  control = 5
+) 
+```
+```{r}
+org_d <- rexp(n=100) 
+scl_d <- (org_d-min(org_d))/(max(org_d)-min(org_d))
+par(mfrow=c(1,2))
+
+
+```
+
+```{r}
+orgdata <- rexp(n=1000)
+
+scldata <- (orgdata-min(orgdata))/(max(orgdata)-min(orgdata))
+par(mfrow=c(1,2))
+hist(orgdata)
+hist(scldata)
+norm_da <- scale(org_d)
+par(mfrow=c(1,2))
+hist(norm_da)
+hist(org_d)
+```
+```{r}
+scalecolumn <- function(x){
+  scale_x <- (x-min(x))/(max(x)-min(x))
+  return(scale_x)
+}
+scalecolumn(df_sub$Rooms)
+sapply(df_sub, scalecolumn)
+```
+
+```{r}
+getwd()
+dat <- read.csv("auto.csv")
+```
+##Mathematical transformation
+```{r}
+nrow(dat) 
+dat$stroke_ratio <- dat$stroke/dat$bore
+##log transformation
+acc <- read.csv("")
+acc$logwindspeed <- log1p(acc$windspeed)
+ggplot(acc, aes(windspeed))+geom_histogram()+theme_classic()
+ggplot(acc, aes(logwindspeed))+geom_histogram()+theme_classic()
+```
+```{r}
+sapply(dat, class)
+
+```
+```{r}
+roadwayfeatures <- c("Amenity","crossing","Bump","Giveway")
+sapply(acc[,roadwayfeatures], function(x){as.logical(x)})
+
+acc[,roadwayfeatures] <- sapply(acc[,roadwayfeatures],function(x){as.numeric(x)})
+acc[,roadwayfeatures] <- sapply(acc[,roadwayfeatures],function(x){as.numeric(x)})
+```
+```{r}
+library(tidyr)
+customer <- customer %>% separate(Policy, c("Type","Level"), " ")
+customer <- customer %>%  separate(Policy, c("Type","Level"), " ")
+
+```
+Join feature
+```{r}
+autos$make_and_style <- paste0(autos$make, "_", autos$style)
+head(autos[,c("make","style", "make_and_style")])
+```
+```{r}
+tapply(customer$income, customer$state,mean)
+customer  %>%  group_by(State) %>% summarise(avginc <- mean(income), sdinc <- sd(income))
+
+tapply(customer$income, customer$state, mean)
+library(dplyr)
+average <- customer %>% 
+  group_by(State) %>% 
+  summarise(avgIncome = mean(income), sdincome = sd(income))
+head(dat)
+dat %>%  group_by(cylinders) %>% summarise(avgH <- mean(horsepower),avgW <- mean(weight))
+ 
+
+dat %>%  count(cylinders) %>% mutate(freq <- n/sum(n))
+table(dat$cylinders)/length(dat$cylinders)
+table(dat$cylinders)
+
+```
+```{r}
+sum(is.na(dat))
+sum(is.na(df$Car))
+sapply(dat, function(x){sum(is.na(x))})
+countbyVariable <- sapply(df, function(x){sum(is.na(x))}/nrow(df))
+countbyVariable <- countbyVariable*100 
+sort(countbyVariable/nrow(df),decreasing = TRUE)
+
+lessThenFourtyMissing <- df[,countbyVariable <= 40]
+dim(lessThenFourtyMissing)
+colSums(is.na(dat))
+colSums(is.na(df))
+rowsum()
+rowSums(is.na(df))
+rowPerM <- rowSums(is.na(df))/ncol(df)
+rowperMi <- rowPerM * 100
+rowpermis <- df[rowperMi<25,]
+summary(df)
+```
+#Remove row with missing value
+```{r}
+dfnomiss <- df[complete.cases(df),]
+```
+#Remove column with missing value
+```{r}
+dfnomis <- df[,colSums(is.na(df))==0]
+dim(dfnomis)
+dim(df)
+```
+
+#filling in missing value automatically
+```{r}
+#Replace all missing value with zero
+
+colSums(is.na(df_sub))
+sum(is.na(df_sub))
+df_sub[is.na(df_sub)]
+df_sub[is.na(df_sub)] <- 0
+sum(is.na(df_sub))
+```
+
+```{r}
+#backward fill
+#Replace missing value using last or previous observation
+install.packages("xts")
+library(xts)
+da <- data.frame(c1 = c(1:3,NA,NA),
+                c2 = c("A","B",NA,"D","E"),
+                c3 = c(TRUE,FALSE,TRUE,NA,NA),
+                c4 = c(2.4,NA,.6,5,NA),
+                stringsAsFactors = FALSE)
+head(da)
+da_backfill <- na.locf(da)
+da_backfill
+library(zoo)
+da_forwardfill <- na.locf(da,fromLast = TRUE)
+da_forwardfill
+```
+
+#impute missing data with mean and median
+```{r}
+df2 <- df
+sum(is.na(df))
+sum(is.na(df2$Car))
+carmean <- mean(df2$Car,na.rm = TRUE)
+df2$Car <- replace(df2$Car, is.na(df2$Car), carmean)
+replacemissmean <- function(x){
+  meanx <- mean(x, na.rm= TRUE)
+  repl <- replace(x, is.na(x), meanx)
+  return(repl)
+}
+
+df3 <- sapply(df2, replacemissmean)
+sum(is.na(df))
+sum(is.na(df3))
+#Using dplyr
+sum(is.na(df4))
+library(dplyr)
+df4 <- df %>% mutate_all(~ifelse(is.na(.x),mean(.x, na.rm = TRUE), .x))
+df5 <- df %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x))
+dim(df4)
+dim(df5)
+```
+
+#Missing Value 
+```{r}
+library(Amelia)
+library(Rcpp)
+missmap(df)
+head(df)
+x <- c(1:3,NA,5:7,NA,9)
+is.na(x)
+x1 <- na.omit(x)
+#x2 <- x[complete.cases(x),]
+sum(is.na(x))
+#column
+colSums(is.na(df))
+colMis <- sapply(df, function(x){sum(is.na(x))})
+colMiss <- colMis/nrow(df)*100
+sort(colMiss, decreasing = TRUE)
+les40 <- df[,colMiss < 40]
+dim(les40)
+dim(df)
+#Row
+rowmis <- (rowSums(is.na(df))/ncol(df))*100
+summary(rowmis)
+rowmiss <- df[rowmis < 8,]
+dim(rowmiss)
+dim(df)
+# R > complete.cases(x) #C > colSums(is.na(x))==0
+#Replace missing value with 0 / 999
+df1 <- df
+df1[is.na(df1)] <- 0
+sum(is.na(df1))
+df1[is.na(df1)]
+#Backwardfill/forw
+da <- data.frame(c1 = c(1:3,NA),
+                 c2= c("A","B","C","D"),
+                 c3= c(TRUE,FALSE,NA,NA),
+                 c4= c(NA,1,NA,2),
+                 stringsAsFactors = FALSE)
+
+library(xts)
+da1 <- na.locf(da)
+da2 <- na.locf(da,fromLast = TRUE)
+
+#impute missing value with mean and median 
+df3 <- df
+mean(df3$Car,na.rm = TRUE)
+median(df3$Car,na.rm = TRUE)
+mod <- as.numeric(names(which.max(table(df3$Car))))
+
+summary(df3$Car)
+
+df3$Car <- replace(df3$car,is.na(df3$Car),mod)
+
+sum(is.na(df3$Car))
+
+
+repl <- function(x){
+  mea <- mean(x,na.rm = TRUE)
+  repl <- replace(x, is.na(x),mea)
+  return(repl)
+}
+Nomis <- sapply(df3,repl)
+sum(is.na(df))
+sum(is.na(Nomis))
+
+#using dplyr
+library(dplyr)
+df4 <- df %>% mutate_all(~ifelse(is.na(.x),mean(.x,na.rm =TRUE), .x))
+sum(is.na(df4))
+which(is.na(df$Car))
+
+##
+x[is.na(x)] <- mean(x,na.rm = TRUE)
+#
+df[df==999] <- NA
+```
+```{r}
+length(unique(df$Car))
+#Cardinality means the number of unique values in a column
+lowcard <- function(x){
+  len <- length(unique(x))
+  return(len)
+}
+sapply(df,class)
+sapply(df,lowcard)
+
+#date 
+class(df$Date)
+head(df$Date)
+library(lubridate)
+df$Date <- as_date(df$Date, format= "%d/%m/%Y")
+
+char_col <- sapply(df,is.character)
+char_col
+sum(char_col)
+df_char <- df[,char_col]
+df_char
+
+num_col <- sapply(df,is.numeric)
+sum(num_col)
+df_num <- df[,num_col]
+
+
+library(cleandata)
+#install.packages("cleandata")
+unique(df_char$Type) 
+#need to convert to factor
+df_char$Type <- as.factor(df_char$Type)
+df_char[,"Type"] <- encode_ordinal(df_char[,"Type",drop=FALSE],order = c("u","h","t"))
+class(df_char$Type)
+
+unique(df_char$Method)
+df_char$Method <- as.factor(df_char$Method)
+df_char[,"Method"] <- encode_ordinal(df_char[,"Method",drop= FALSE], order = unique(df_char$Method))
+```
+```{r}
+dff <- data.frame(A= c("x","z","y"),
+                  B= c("z","x", "z"),
+                  C= c("i","j","k"))
+as.factor(dff$A)
+
+dff$A <- as.factor(dff$A)
+dff$B <- as.factor(dff$B)
+dff$C <- as.factor(dff$C)
+class(dff$A)
+dff[,1:2] <- encode_ordinal(dff[,1:2],order = c("x","y","z"))
+dff[,3]<- encode_ordinal(dff[,3,drop=FALSE],order = c("k","j","i"))
+
+#label encoding
+library(CatEncoders)
+#install.packages("CatEncoders")
+length(unique(df_char$Address))
+label_enc <- LabelEncoder.fit(df_char$Address)
+df_char$Address<-  transform(label_enc,df_char$Address)
+head(df_char$Address)
+
+inverse.transform(label_enc,df_char$Address)
+
+df_char$Type2 <- as.numeric(as.factor(df_char$Type))
+
+```
+
+```{r}
+#read.csv
+titanic$sex <- ifelse(titanic$sex=="male",1,0)
+```
+```{r}
+bins <- c(-Inf,14.45,32.20,Inf)
+bin_names <- c("Low","Mid","High")
+titanic$fare_new <- cut(titanic$fare, break= bins, labels =bin_names)
+head(titanic[,c("fare","fare_new")])
+```
+```{r}
+#one- encoding
+library(caret)
+#install.packages("caret")
+head(df_char)
+length(unique(df_char$Regionname))
+
+sapply(df_char,function(x){
+  length(unique(x))
+})
+sub_df_cha <- df_char[,c("Type","Method","Regionname")]
+head(sub_df_cha)
+
+dmy <- dummyVars("~.",data = sub_df_cha)
+dmy_pred <- predict(dmy, sub_df_cha)
+sub_df_dmy <- data.frame(dmy_pred)
+head(sub_df_dmy)
+#dummy encoding 
+head(sub_df_cha)
+dmmy <- dummyVars("~.",data = sub_df_cha, fullRank = TRUE)
+sub_df_dmmy <- data.frame(predict(dmmy,sub_df_cha))
+head(sub_df_dmmy)
+```
+
+```{r}
+colnames(df_sub)
+for (col in colnames(df_sub)) { 
+  print(col)
+  t_r <- df_sub[,col]
+  print(sum(t_r))
+
+}
+
+c <- df_sub[,c("Car")]
+print(sum(c))
+print(sum(df_sub$Car))
+```
+
+```{r}
+#ggplot(df)+ geom_line(aes())
+#ggplot(df,aes())+geom_hist
+#ggplot(df,aes(a,s,color= ,size= ))+geom_point
+
+```
+```{r}
+bins <- c(-Inf, 14.45, 32.20, Inf)
+bin_names <- c("Low","Medium", "Low")
+df$fare_new <- cut(df$fare, breaks= bins, labels = bin_names)
+
+```
+
+
+```{r}
+df <- read.csv('melb_data.csv')
+getwd()
+df <- read.csv(file.choose())
+df_sub <- df[,c('Rooms',"Distance", 'Landsize', 'BuildingArea',"YearBuilt" ,'Price','Type')]
+df_sub <- df_sub[1:500,]
+#missing
+sapply(df_sub, function(x){sum(is.na(x))})
+#missing imputation
+
+#mea <- mean(df_sub$BuildingArea, na.rm = TRUE)
+#print(mea)
+#df_sub$BuildingArea <- replace(df_sub$BuildingArea, is.na(df_sub$BuildingArea), mea)
+
+mis_col <- c("BuildingArea","YearBuilt")
+fun <- function(x){
+  mea <- mean(x, na.rm = TRUE)
+  no_mis <- replace(x, is.na(x),mea)
+  return(no_mis)
+}
+
+df_sub[,mis_col] <-sapply(df_sub[,mis_col], fun)
+sapply(df_sub, function(x){sum(is.na(x))})
+
+#train_test
+sam_sz <- floor(nrow(df_sub)*.75)
+index <- sample(1:nrow(df_sub), size = sam_sz)
+train <- df_sub[index,]
+test <- df_sub[-index,]
+library(tidyr)
+library(ggplot2)
+library(caret)
+library(tidyverse)
+dim(train)
+dim(test)
+df_index <- createDataPartition(df_sub$Price, p = .75, list = FALSE)
+df_train <- df_sub[df_index,]
+df_test <- df_sub[-df_index,]
+dim(df_test)
+dim(df_train)
+
+
+```
+#k fold
+```{r}
+library(caret)
+#5_fold cross validation
+fitcontrol <- trainControl(method = "CV",
+                           number = 5)
+
+set.seed(35)
+
+start_time <- Sys.time()
+treefit1 <- train(Price ~., data = train, 
+                  method = "rf",
+                  trcontrol=fitcontrol,
+                  verbose= TRUE)
+end_time <- Sys.time()
+time_taken <- end_time - start_time
+time_taken
+treefit1
+treefit1$results
+
+options(scipen = 4)
+df_pred <- predict(treefit1, test)
+postResample(pred = df_pred,obs = test$Price)
+```
+#Parallel
+```{r}
+#allowParallel=TRUE
+set.seed(234)
+library(parallel)
+#calculate no of core
+no_cores <- detectCores()-1
+c1 <- makePSOCKcluster(no_cores)
+library(doParallel)
+#install.packages("doParallel")
+registerDoParallel(c1)
+
+fitcontrol <- trainControl(method = "CV",
+                           number = 5)
+
+set.seed(35)
+
+start_time <- Sys.time()
+treefit2 <- train(Price ~., data = train,
+                  method = "rf",
+                  trcontrol=fitcontrol,
+                  verbose= TRUE,
+                  allowParallel=TRUE)
+end_time <- Sys.time()
+time_taken <- end_time - start_time
+time_taken
+```
+#Leave one out CV (LOOCV)
+```{r}
+fitcontrol <- trainControl(method = "LOOCV",
+                           number = 5)
+
+set.seed(35)
+
+start_time <- Sys.time()
+treefit3 <- train(Price ~., data = train,
+                  method = "rf",
+                  trcontrol=fitcontrol,
+                  verbose= TRUE,
+                  allowParallel=TRUE)
+```
+
+
+
+#off parallel processing 
+```{r}
+stopCluster(c1)
+registerDoSEQ()
+ 
+```
+
+
+```{r}
+#stratified k-fold validation 
+sum(is.na(df_sub))
+
+sapply(df_sub, function(x){sum(is.na(x))})
+
+colnames(df_sub)
+
+folds <- 5
+cvIndex <- createFolds(factor(df_sub$Type),folds, returnTrain = T)
+
+table(df_sub$Type)
+table(df_sub$Type[cvIndex$Fold1])
+table(df_sub$Type[cvIndex$Fold2])
+table(df_sub$Type[cvIndex$Fold3])
+table(df_sub$Type[cvIndex$Fold4])
+table(df_sub$Type[cvIndex$Fold5])
+
+fitcontrol_stra <- trainControl( index = cvIndex,
+  method = "cv",
+                           number = folds)
+
+set.seed(35)
+
+start_time <- Sys.time()
+treefit4 <- train(Price ~., data = df_train,
+                  method = "rf",
+                  trcontrol=fitcontrol_stra,
+                  verbose= TRUE,
+                  allowParallel=TRUE)
+
+treefit4
+#1677490001
+melb_pre_str <- predict(treefit4, df_test)
+postResample(pred = melb_pre_str, obs = df_test$Price)
+```
+```{r}
+#Time Series
+data("economics")
+round(nrow(economics)*.8)
+
+x <- createTimeSlices(1:8, 2, 1)
+#mot 3 ta 2 ta kore train e 1 ta kore test e , fixedwindow bydefult TRUE mane protek bar  3 ta kore 
+x$train
+x$test
+
+eco_index <- createTimeSlices(economics$unemploy, 570, 1, fixedWindow = FALSE)
+eco_index$train[1]
+eco_index$test[1]
+eco_index$train[2]
+eco_index$test[2]
+
+eco_train <- economics[eco_index$train[[1]], ]
+eco_test <- economics[eco_index$test[[1]],]
+dim(eco_test)
+
+
+#partial least squares
+fitcontrol_time <- trainControl(method = "timeslice",
+                                initialWindow = 200,
+                                horizon = 4,
+                                fixedWindow = TRUE)
+
+set.seed(123)
+treefit5 <- train(unemploy ~ pce + pop + psavert,
+                  data = eco_train,
+                  method = 'pls', #partial least sq
+                  preProc = c('center','scale'), #datar scale thik kore
+                  trcontrol = fitcontrol_time)
+
+treefit5
+
+eco_pred <- predict(treefit5,eco_test)
+postResample(pred=eco_pred, obs = eco_test$unemploy)
+```
+```{r}
+##class7
+#Grid search:manual grid 
+set.seed(312)
+library(caret)
+data("iris")
+#prepare training scheme
+fitcontrol <- 
+trainControl(method='repeatedcv',number = 10,repeats = 3)
+#design the parameter tuning grid
+grid <- expand.grid(size= c(5,10,20,50),k=c(1,2,3,4,5))
+modelfit <- train(Species ~ .,data = iris,method='lvq',trControl=fitcontrol,tuneGrid=grid)
+print(modelfit)
+plot(modelfit)
+```
+
+```{r}
+#Automatic grid search
+fitcontrol <- 
+trainControl(method='repeatedcv',number = 10,repeats = 3)
+#design the parameter tuning grid
+modelfit <- train(Species ~ .,data = iris,method='lvq',trControl=fitcontrol,tuneLength=5)
+print(modelfit)
+plot(modelfit)
+```
+```{r}
+#'rf'
+fitcontrol <- 
+trainControl(method='repeatedcv',number = 10,repeats = 3)
+#design the parameter tuning grid
+modelfit <- train(Species ~ .,data = iris,method='rf',trControl=fitcontrol,tuneLength=5)
+
+print(modelfit)
+plot(modelfit)
+```
+```{r}
+##Random hyperparameter search
+{r}
+library(mlbench)
+data(Sonar)
+library(caret)
+library(klaR)
+index <- createDataPartition(Sonar$Class,p=.75,list = FALSE)
+train_so <- Sonar[index,]
+test_so <- Sonar[-index,]
+
+fitcontrol <- trainControl(method = 'repeatedcv',
+                           number= 10,
+                           repeats = 10,
+                           classProbs = TRUE,
+                           summaryFunction = twoClassSummary,
+                           search = 'random')
+set.seed(312)
+ran_hyp_fit <- train(Class ~.,data = train_so,method='rda',
+                     metric='ROC',#receiver operating characteristic(confusion matrix )
+                     tuneLength=30,
+                     trControl=fitcontrol)
+
+ran_hyp_fit
+plot(ran_hyp_fit)
+ran_hyp_fit$results[ran_hyp_fit$results$ROC == max(ran_hyp_fit$results$ROC),]
+
+##grid search
+fitcontrol2 <- trainControl(method = 'repeatedcv',
+                           number= 10,
+                           repeats = 10,
+                           classProbs = TRUE,
+                           summaryFunction = twoClassSummary)
+set.seed(312)
+ran_hyp_fit2 <- train(Class ~.,data = train_so,method='rda',
+                     metric='ROC',#receiver operating characteristic(confusion matrix )
+                     tuneLength=30,
+                     trControl=fitcontrol)
+
+ran_hyp_fit2
+plot(ran_hyp_fit2)
+ran_hyp_fit2$results[ran_hyp_fit2$results$ROC == max(ran_hyp_fit2$results$ROC),]
+ggplot(ran_hyp_fit2)+theme(legend.position = 'top')
+```
+
+
+
+
+
+
+
+```{r}
+##Clustering distance measure 
+#distance matrix computation
+{r}
+library(ggplot2)
+df <- USArrests
+head(df)
+ggplot(df, aes(Murder,Assault,colour = rownames(df)))+geom_point()
+#missing
+df <- na.omit(df)
+
+#range dekhi scale korar jonno
+sapply(df,range)
+
+df.scaled<- scale(df)
+
+sapply(data.frame(df.scaled),range)
+
+##Clustering distance measure 
+#distance matrix computation
+
+#eucliden distance
+dim(df.scaled)
+dist_euc <- dist(df.scaled,method = 'euclidean')
+dist_euc
+
+
+#subset the first 3 columns and rows and round the values 
+round(as.matrix(dist_euc)[1:3,1:3],1)
+#visualizing distance matrix 
+fviz_dist(dist_euc)
+
+#compute correlation based distance
+library(factoextra)
+dist_cor <- get_dist(df.scaled, methdo = 'pearson')
+#display a subset 
+round(as.matrix(dist_cor)[1:3,1:3],1)
+
+#computing dist for mixed data 
+library(cluster)
+data(flower)
+head(flower)
+#distance matrix 
+?daisy
+dd <- daisy(flower)
+head(as.matrix(dd))
+round(as.matrix(dd)[1:3,1:3],1)
+
+fviz_dist(dd)
+
+##K-means clustering
+{r}
+df<- USArrests
+df.scaled <- scale(df)
+library(factoextra)
+distance_eu <- dist(df.scaled)
+
+#k-means
+k1 <- kmeans(distance_eu,centers = 4,nstart = 25)
+k1
+k1$cluster
+k1$totss
+k1$withinss
+k1$betweenss
+
+fviz_cluster(k1,data=distance_eu)
+#dim1/2 internally pca koira 2 ta dimension rakhlo
+df$cluster <- k1$cluster
+df
+library(dplyr)
+df %>% 
+  group_by(cluster) %>% 
+  summarise_all(mean)
+
+
+library(tidyverse)
+df %>% 
+  as_tibble() %>% 
+  mutate(cluster = k1$cluster,
+         state=rownames(df)) %>% 
+  ggplot(aes(UrbanPop,Murder,colour = factor(cluster),label=state))+geom_text()
+
+
+#How many cluster we will take ?
+
+{r}
+k2 <- kmeans(distance_eu,centers = 2, nstart = 25)
+
+
+
+{r}
+k3 <- kmeans(distance_eu,centers = 3, nstart = 25)
+k4 <- kmeans(distance_eu,centers = 4, nstart = 25)
+k5 <- kmeans(distance_eu,centers = 5, nstart = 25)
+#plot to compare
+p2 <- fviz_cluster(k2,geom = 'point',data = distance_eu)+ggtitle('K=2')
+p3 <- fviz_cluster(k3,geom = 'point',data = distance_eu)+ggtitle('K=3')
+p4 <- fviz_cluster(k4,geom = 'point',data = distance_eu)+ggtitle('K=4')
+p5 <- fviz_cluster(k5,geom = 'point',data = distance_eu)+ggtitle('K=5')
+
+library(gridExtra)
+grid.arrange(p2,p3,p4,p5, nrow=2)
+
+#determining optimal cluster 
+{r}
+#Elbow method
+set.seed(312)
+fviz_nbclust(data.frame(distance_eu),kmeans,method = 'wss')
+#k=2/4
+
+#average silhouette method
+set.seed(312)
+df1 <- data.frame(distance_eu)
+fviz_nbclust(df1,kmeans,method='silhouette')
+#k=2
+#Gap statistics 
+set.seed(312)
+fviz_nbclust(df1,kmeans,method='gap_stat')
+#k=1!!!! maximize jeita 
+
+{r}
+#final 
+final <- kmeans(df1,centers=4,nstart = 25)
+print(final)
+fviz_cluster(final,data= data.frame(distance_eu))
+```
+```{r}
+##Hierarchical Clustering 
+#Required package
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(dendextend)
+dfarrest <- USArrests
+dfarrest <- scale(dfarrest)
+#agglomerative clustering - bottom up
+#dissimilarity matrix
+darrest <- dist(dfarrest,method = 'euclidean')
+head(as.matrix(darrest))
+#Hierarchical clustering using complete linkage
+hc1 <- hclust(darrest,method = 'complete')
+#plot the obtained dendrogram
+plot(hc1,cex=0.6,hang=-1)
+##Agglomerative coefficient (0-1)
+hc2 <- agnes(darrest,method = 'complete')
+hc2$ac
+#method to assess
+m<- c('average','single','complete','ward')
+names(m) <- m
+
+for (metho in m){
+  print(metho)
+  hc <- agnes(dfarrest,method=metho)
+  print(hc$ac)
+}
+#final
+final_hc <- agnes(dfarrest,method = 'ward')
+pltree(final_hc,cex=0.6,hang=-1, main = 'Dendogram of agnes')
+
+#Divisive Hierarchical clustering(DIANA-Divisive analysis) - top down
+
+hc3 <- diana(dfarrest)
+#divisive coefficient 
+hc3$dc
+#plot dendrogram
+pltree(hc3,cex=0.6,hang=-1,main = 'Dendrogram of diana')
+
+```
+```{r}
+#working with dendrograms
+#ward's method
+hc4 <- hclust(darrest,method = 'ward.D2')
+
+plot(hc4)
+
+#cut tree into four groups 
+hc4_cut <- cutree(hc4,k=4) #k = no of groups , h = height
+hc4_cut
+table(hc4_cut)
+dfarrest <- as.data.frame(dfarrest)
+head(dfarrest)
+dfarrest$cluster <- as.numeric(hc4_cut)
+str(dfarrest)
+
+dfarrest %>% group_by(cluster) %>% summarise_all(mean)
+
+#
+plot(hc4,cex=0.6)
+rect.hclust(hc4, k=4, border = 2:5) #2 3 4 5 color
+#height onujayi
+plot(hc4,cex=0.6)
+rect.hclust(hc4, h=3,border = 1:5)
+```
+```{r}
+fviz_cluster(list(data=dfarrest,cluster=hc4_cut))
+```
+```{r}
+#cutree using agnes
+hc_a <- agnes(dfarrest,method = 'ward')
+hca_cut <- cutree(as.hclust(hc_a),k=4)
+hca_cut
+#cutree using diana
+hc_d <- diana(dfarrest)
+hcd_cut <- cutree(as.hclust(hc_d),k=4)
+```
+```{r}
+#Compare two dendrograms
+#tanglegram
+#compute 2  hierarchical clustering
+
+hc11 <- hclust(darrest,method = 'complete')
+hc22 <- hclust(darrest,method = 'ward.D2')
+
+#create two dendrograms
+#plot dia esaily lot kora jai but compare korar age as.dend
+den1 <- as.dendrogram(hc11)
+den2 <- as.dendrogram(hc22)
+
+tanglegram(den1,den2)
+#entanglement value near to zero > a good alignment
+entanglement(den1,den2)
+
+```
+
+```{r}
+tanglegram(den1,den2,highlight_distinct_edges = F, #turn off dashed lines
+           common_subtrees_color_lines = F,#turn off line colors
+           common_subtrees_color_branches = F,
+           main = paste('Entanglement = ',round(entanglement(den1,den2),2)))
+```
+
+```{r}
+##Determinig optimal cluster
+#Elbow method
+fviz_nbclust(dfarrest,FUN=hcut,method = 'wss')
+
+#Average Silhouette 
+fviz_nbclust(dfarrest,FUN=hcut,method = 'silhouette')
+#Gap statistics
+gapstat <- clusGap(dfarrest,FUN=hcut,nstart=25,K.max = 10,B=50)
+fviz_gap_stat(gapstat)
+```
+
