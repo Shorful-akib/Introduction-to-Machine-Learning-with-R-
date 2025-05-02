@@ -27,3 +27,6 @@ Linear Regression<br>
 Logistic Regression<br>
 K Means Clustering<br>
 Hierarchical Clustering<br>
+🔗 You can view the rendered HTML files here:  <br>
+👉 [Intro-to-Machine-Learning-part-1.html](https://shorful-akib.github.io/Introduction-to-Machine-Learning-with-R-/Intro-to-Machine-Learning-part-1.html)<br>
+👉 [Intro-to-Machine-Learning-part-2.html](https://shorful-akib.github.io/Introduction-to-Machine-Learning-with-R-/Intro-to-Machine-Learning-part-2.html)<br>
