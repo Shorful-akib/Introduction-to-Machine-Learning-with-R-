@@ -1,5 +1,5 @@
 ---
-title: "Rana Bhai"
+title: "Intro to machine learning with Rana Bhai"
 author: "Akib"
 date: "2025-03-11"
 output: html_document
@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+#####      This file covers data preprocessing, feature engineering, model evaluation, and key algorithms like Decision Trees, SVM, Random Forest, KNN, Regression, and Clustering techniques.  ######
 ```{r}
 setwd('C:/Users/hp/Desktop/Lazy!/R')
 df <- read.csv('melb_data.csv')
