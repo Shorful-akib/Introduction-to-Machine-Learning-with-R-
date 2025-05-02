@@ -1,5 +1,5 @@
 ---
-title: "Intro to machine learning with Rana Bhai"
+title: "Intro to machine learning with Rana"
 author: "Akib"
 date: "2025-03-11"
 output: html_document
